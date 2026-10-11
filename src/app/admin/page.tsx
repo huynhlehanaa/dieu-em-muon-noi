@@ -176,6 +176,27 @@ export default function AdminDashboard() {
     router.refresh();
   };
 
+  const deleteTopic = async (id: number, name: string) => {
+    if (id === 0) {
+      setTopicMsg("❌ Không thể xóa chủ đề mặc định của hệ thống.");
+      return;
+    }
+    const confirmed = window.confirm(
+      `Bạn có chắc muốn XÓA VĨNH VIỄN chủ đề "${name}" không?\n\nHành động này không thể hoàn tác.`
+    );
+    if (!confirmed) return;
+
+    const res = await fetch(`/api/topics/${id}`, { method: "DELETE" });
+    const data = await res.json();
+    if (res.ok) {
+      setTopicMsg(`✅ ${data.message}`);
+      await fetchTopics();
+      router.refresh();
+    } else {
+      setTopicMsg("❌ " + (data.error || "Xóa thất bại"));
+    }
+  };
+
   const handleChangePassword = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setPwdMsg("");
@@ -679,11 +700,11 @@ export default function AdminDashboard() {
                 <ul className="space-y-2.5">
                   {topics.map((topic) => (
                     <li
-                      key={topic.id}
-                      className="flex items-center justify-between rounded-2xl border border-blue-100 bg-blue-50/50 px-4 py-3"
+                      key={topic.id || topic.name}
+                      className="flex items-center justify-between gap-3 rounded-2xl border border-blue-100 bg-blue-50/50 px-4 py-3"
                     >
                       <span
-                        className={`text-sm font-bold ${
+                        className={`flex-1 text-sm font-bold ${
                           !topic.is_active ? "text-slate-400 line-through" : "text-slate-800"
                         }`}
                       >
@@ -694,16 +715,27 @@ export default function AdminDashboard() {
                           </span>
                         )}
                       </span>
-                      <button
-                        onClick={() => toggleTopic(topic.id, topic.is_active)}
-                        className={`rounded-xl px-4 py-1.5 text-xs font-extrabold transition-all ${
-                          topic.is_active
-                            ? "border border-red-200 bg-red-50 text-[#DA251D] hover:bg-[#DA251D] hover:text-white"
-                            : "border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white"
-                        }`}
-                      >
-                        {topic.is_active ? "Ẩn chủ đề" : "Hiện chủ đề"}
-                      </button>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <button
+                          onClick={() => toggleTopic(topic.id, topic.is_active)}
+                          className={`rounded-xl px-4 py-1.5 text-xs font-extrabold transition-all ${
+                            topic.is_active
+                              ? "border border-red-200 bg-red-50 text-[#DA251D] hover:bg-[#DA251D] hover:text-white"
+                              : "border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white"
+                          }`}
+                        >
+                          {topic.is_active ? "Ẩn chủ đề" : "Hiện chủ đề"}
+                        </button>
+                        {topic.id !== 0 && (
+                          <button
+                            onClick={() => deleteTopic(topic.id, topic.name)}
+                            title="Xóa vĩnh viễn chủ đề này"
+                            className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-extrabold text-slate-500 transition-all hover:border-red-400 hover:bg-red-600 hover:text-white"
+                          >
+                            🗑️ Xóa
+                          </button>
+                        )}
+                      </div>
                     </li>
                   ))}
                 </ul>
