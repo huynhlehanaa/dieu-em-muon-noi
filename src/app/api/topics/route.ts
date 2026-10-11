@@ -5,41 +5,57 @@ import { LEGACY_TOPIC_ALIASES, normalizeTopicName, TOPIC_OPTIONS } from "@/lib/t
 
 type TopicRow = { id: number; name: string; is_active: boolean; created_at: string };
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const db = getSql();
-    const topics = (await db`SELECT * FROM topics WHERE is_active = true ORDER BY id ASC`) as TopicRow[];
+    const { searchParams } = new URL(request.url);
+    const showAll = searchParams.get("all") === "1";
+
+    // Nếu showAll=1 (admin), lấy tất cả kể cả chủ đề bị ẩn
+    const topics = showAll
+      ? (await db`SELECT * FROM topics ORDER BY name ASC`) as TopicRow[]
+      : (await db`SELECT * FROM topics WHERE is_active = true ORDER BY name ASC`) as TopicRow[];
+
+    // Chuẩn hóa tên (xử lý alias cũ)
     const normalized = topics.map((topic) => ({
       ...topic,
       name: normalizeTopicName(topic.name),
     }));
 
+    // Cập nhật DB nếu tên đã được chuẩn hóa
     for (const topic of normalized) {
       const canonical = LEGACY_TOPIC_ALIASES[topic.name] ?? topic.name;
       if (canonical !== topic.name) {
         await db`UPDATE topics SET name = ${canonical} WHERE id = ${topic.id}`;
+        topic.name = canonical;
       }
     }
 
-    const finalTopics = normalized.map((topic) => ({
-      ...topic,
-      name: LEGACY_TOPIC_ALIASES[topic.name] ?? topic.name,
-    }));
-
-    const mergedMap = new Map<string, TopicRow>();
-    for (const topicName of TOPIC_OPTIONS) {
-      mergedMap.set(topicName, {
-        id: 0,
-        name: topicName,
-        is_active: true,
-        created_at: new Date().toISOString(),
-      });
-    }
-    for (const topic of finalTopics) {
-      mergedMap.set(topic.name, topic);
+    // Loại bỏ trùng tên
+    const topicMap = new Map<string, TopicRow>();
+    for (const topic of normalized) {
+      if (topic.name?.trim()) {
+        topicMap.set(topic.name.trim(), topic);
+      }
     }
 
-    return NextResponse.json(Array.from(mergedMap.values()));
+    // Với request thông thường (form người dùng): bổ sung TOPIC_OPTIONS mặc định nếu thiếu
+    if (!showAll) {
+      for (const topicName of TOPIC_OPTIONS) {
+        if (!topicMap.has(topicName)) {
+          topicMap.set(topicName, {
+            id: 0,
+            name: topicName,
+            is_active: true,
+            created_at: new Date().toISOString(),
+          });
+        }
+      }
+    }
+
+    return NextResponse.json(
+      Array.from(topicMap.values()).sort((a, b) => a.name.localeCompare(b.name))
+    );
   } catch (error) {
     console.error("Error fetching topics:", error);
     return NextResponse.json(

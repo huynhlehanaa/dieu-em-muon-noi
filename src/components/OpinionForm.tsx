@@ -27,17 +27,21 @@ export default function OpinionForm() {
   useEffect(() => {
     const loadTopics = async () => {
       try {
-        const res = await fetch("/api/topics");
+        const res = await fetch("/api/topics", { cache: "no-store" });
         if (!res.ok) return;
         const data = await res.json();
 
         if (Array.isArray(data) && data.length > 0) {
+          // Chỉ lấy chủ đề đang active
           const names = data
+            .filter((item: { is_active?: boolean }) => item?.is_active !== false)
             .map((item: { name?: string }) => item?.name)
             .filter((name): name is string => Boolean(name && name.trim()));
 
           if (names.length > 0) {
-            setTopicOptions([...new Set([...TOPIC_OPTIONS, ...names])]);
+            // Ưu tiên danh sách từ DB (bao gồm chủ đề mới), bổ sung TOPIC_OPTIONS nếu thiếu
+            const merged = [...new Set([...names, ...TOPIC_OPTIONS])];
+            setTopicOptions(merged.sort((a, b) => a.localeCompare(b)));
           }
         }
       } catch {

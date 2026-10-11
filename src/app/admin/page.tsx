@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Nunito } from "next/font/google";
-import { TOPIC_OPTIONS } from "@/lib/topicOptions";
+
 
 const nunito = Nunito({
   subsets: ["latin", "vietnamese"],
@@ -94,9 +94,25 @@ export default function AdminDashboard() {
 
   const fetchTopics = useCallback(async () => {
     try {
-      const res = await fetch("/api/topics");
+      const res = await fetch("/api/topics?all=1", { cache: "no-store" });
       const data = await res.json();
-      if (Array.isArray(data)) setTopics(data);
+      if (!Array.isArray(data)) return;
+
+      // Dùng trực tiếp dữ liệu từ DB (đã bao gồm cả chủ đề mới)
+      // Không merge với TOPIC_OPTIONS tĩnh để tránh mất chủ đề mới
+      const topicMap = new Map<string, Topic>();
+      for (const item of data) {
+        if (!item?.name || typeof item.name !== "string") continue;
+        const cleanedName = item.name.trim();
+        if (!cleanedName) continue;
+        topicMap.set(cleanedName, {
+          id: Number(item.id ?? 0),
+          name: cleanedName,
+          is_active: item.is_active !== false,
+        });
+      }
+
+      setTopics(Array.from(topicMap.values()).sort((a, b) => a.name.localeCompare(b.name)));
     } catch (error) {
       console.error("Error fetching topics:", error);
     }
@@ -143,7 +159,8 @@ export default function AdminDashboard() {
     if (res.ok) {
       setTopicMsg("✅ Thêm chủ đề thành công!");
       setNewTopicName("");
-      fetchTopics();
+      await fetchTopics();
+      router.refresh();
     } else {
       setTopicMsg("❌ " + (data.error || "Thêm thất bại"));
     }
@@ -155,7 +172,8 @@ export default function AdminDashboard() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ is_active: !is_active }),
     });
-    fetchTopics();
+    await fetchTopics();
+    router.refresh();
   };
 
   const handleChangePassword = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -204,12 +222,14 @@ export default function AdminDashboard() {
   };
 
   const topicFilterOptions = useMemo(() => {
-    const values = new Set<string>(TOPIC_OPTIONS);
+    const values = new Set<string>();
 
+    // Lấy từ danh sách chủ đề DB (bao gồm cả chủ đề mới)
     topics.forEach((topic) => {
-      if (topic.is_active && topic.name) values.add(topic.name);
+      if (topic.name) values.add(topic.name);
     });
 
+    // Bổ sung từ các ý kiến đã gửi (phòng trường hợp chủ đề đã bị xóa khỏi DB)
     opinions.forEach((opinion) => {
       if (opinion.topic_name) values.add(opinion.topic_name);
       if (opinion.topic_other) values.add(opinion.topic_other);
