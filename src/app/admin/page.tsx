@@ -21,6 +21,7 @@ interface Opinion {
   topic_name: string | null;
   topic_other: string | null;
   content: string;
+  evidence_image: string | null;
   is_anonymous: boolean;
   status: "pending" | "resolved";
   created_at: string;
@@ -539,12 +540,19 @@ export default function AdminDashboard() {
                             </span>
                           </td>
                           <td className="max-w-[240px] px-4 py-3.5">
-                            <button
-                              onClick={() => setSelectedOpinion(opinion)}
-                              className="line-clamp-2 text-left text-xs font-semibold text-slate-700 transition-colors hover:text-[#00529C] hover:underline"
-                            >
-                              {opinion.content}
-                            </button>
+                            <div className="space-y-1.5">
+                              <button
+                                onClick={() => setSelectedOpinion(opinion)}
+                                className="line-clamp-2 text-left text-xs font-semibold text-slate-700 transition-colors hover:text-[#00529C] hover:underline"
+                              >
+                                {opinion.content}
+                              </button>
+                              {opinion.evidence_image && (
+                                <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-amber-700">
+                                  🖼️ Có ảnh
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="whitespace-nowrap px-4 py-3.5 text-xs font-semibold text-slate-500">
                             {formatDate(opinion.created_at)}
@@ -866,6 +874,18 @@ export default function AdminDashboard() {
                     {selectedOpinion.content}
                   </dd>
                 </div>
+                {selectedOpinion.evidence_image && (
+                  <div className="pt-1">
+                    <dt className="mb-2 font-bold text-slate-600">Ảnh minh chứng:</dt>
+                    <dd className="overflow-hidden rounded-2xl border border-blue-200 bg-blue-50/70 p-2">
+                      <img
+                        src={selectedOpinion.evidence_image}
+                        alt="Ảnh minh chứng ý kiến"
+                        className="max-h-80 w-full rounded-xl object-contain"
+                      />
+                    </dd>
+                  </div>
+                )}
               </dl>
 
               <div className="mt-6 flex gap-3">

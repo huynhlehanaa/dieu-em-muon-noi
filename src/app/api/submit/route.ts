@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSql } from "@/lib/db";
+import { getSql, initDB } from "@/lib/db";
 import { repairUtf8Text } from "@/lib/text";
 
 export async function POST(request: NextRequest) {
@@ -13,6 +13,7 @@ export async function POST(request: NextRequest) {
       topic_id,
       topic_other,
       content,
+      evidence_image,
       is_anonymous,
     } = body;
 
@@ -46,6 +47,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const rawEvidenceImage = typeof evidence_image === "string" ? evidence_image.trim() : "";
+    if (rawEvidenceImage) {
+      const isDataUrl = rawEvidenceImage.startsWith("data:image/");
+      const isHttpUrl = /^https?:\/\//i.test(rawEvidenceImage);
+      if (!isDataUrl && !isHttpUrl) {
+        return NextResponse.json(
+          { error: "Ảnh minh chứng không hợp lệ" },
+          { status: 400 }
+        );
+      }
+      if (rawEvidenceImage.length > 5_000_000) {
+        return NextResponse.json(
+          { error: "Ảnh minh chứng quá lớn, vui lòng chọn ảnh nhỏ hơn 5MB" },
+          { status: 400 }
+        );
+      }
+    }
+
+    await initDB();
+
     const db = getSql();
     const displayName = is_anonymous ? null : repairUtf8Text(full_name) || null;
     const safeLocation = repairUtf8Text(location_name);
@@ -55,7 +76,7 @@ export async function POST(request: NextRequest) {
     await db`
       INSERT INTO opinions (
         full_name, age, location_type, location_name,
-        topic_id, topic_other, content, is_anonymous
+        topic_id, topic_other, content, evidence_image, is_anonymous
       ) VALUES (
         ${displayName},
         ${ageNum},
@@ -64,6 +85,7 @@ export async function POST(request: NextRequest) {
         ${topic_id || null},
         ${safeTopicOther || null},
         ${safeContent},
+        ${rawEvidenceImage || null},
         ${is_anonymous || false}
       )
     `;

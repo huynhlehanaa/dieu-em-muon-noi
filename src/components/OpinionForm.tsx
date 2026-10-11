@@ -19,6 +19,40 @@ export default function OpinionForm() {
     topic: "",
     content: "",
   });
+  const [evidenceImage, setEvidenceImage] = useState("");
+  const [evidenceImageName, setEvidenceImageName] = useState("");
+  const [evidenceImageUrl, setEvidenceImageUrl] = useState("");
+
+  const evidenceImageValue = (evidenceImage || evidenceImageUrl.trim()).trim();
+
+  const handleEvidenceImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      setEvidenceImage("");
+      setEvidenceImageName("");
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      setSubmitError("Vui lòng chọn file ảnh hợp lệ.");
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      setSubmitError("Ảnh minh chứng tối đa 2MB để đảm bảo tốc độ gửi ý kiến.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setEvidenceImage(reader.result);
+        setEvidenceImageName(file.name);
+        setSubmitError("");
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,6 +66,7 @@ export default function OpinionForm() {
       topic_id: null,
       topic_other: formData.topic,
       content: formData.content,
+      evidence_image: evidenceImageValue || null,
       is_anonymous: isAnonymous,
     };
 
@@ -69,6 +104,9 @@ export default function OpinionForm() {
       topic: "",
       content: "",
     });
+    setEvidenceImage("");
+    setEvidenceImageName("");
+    setEvidenceImageUrl("");
   };
 
   if (isSubmitted) {
@@ -209,6 +247,51 @@ export default function OpinionForm() {
           placeholder="✍️ Em hãy mạnh dạn viết ra suy nghĩ, mong muốn hoặc những điều làm em lo lắng nhé. Các anh chị Đoàn Thanh niên luôn lắng nghe em..."
           className="w-full rounded-2xl border border-blue-200 bg-blue-50/70 px-4 py-3.5 text-base font-semibold text-slate-800 placeholder-slate-400 outline-none transition-all hover:bg-blue-50 focus:border-[#00529C] focus:bg-white focus:ring-2 focus:ring-[#00529C]/15"
         />
+      </div>
+
+      <div className="rounded-2xl border border-blue-200 bg-blue-50/70 p-4">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <label className="text-sm font-extrabold text-slate-700">
+            Ảnh minh chứng <span className="font-normal text-slate-500">(tùy chọn)</span>
+          </label>
+          <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+            Không bắt buộc
+          </span>
+        </div>
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <label className="inline-flex cursor-pointer items-center justify-center rounded-xl border border-dashed border-blue-300 bg-white px-4 py-2.5 text-sm font-extrabold text-[#00529C] transition-colors hover:bg-blue-50">
+            <input type="file" accept="image/*" className="hidden" onChange={handleEvidenceImageChange} />
+            📷 Chọn ảnh
+          </label>
+          {evidenceImageName && (
+            <span className="truncate text-sm font-semibold text-slate-600">{evidenceImageName}</span>
+          )}
+        </div>
+
+        <input
+          type="url"
+          value={evidenceImageUrl}
+          onChange={(e) => {
+            setEvidenceImageUrl(e.target.value);
+            if (e.target.value.trim()) {
+              setEvidenceImage("");
+              setEvidenceImageName("");
+            }
+          }}
+          placeholder="Hoặc dán đường dẫn ảnh minh chứng (nếu có)"
+          className="mt-3 w-full rounded-2xl border border-blue-200 bg-white px-4 py-3 text-base font-semibold text-slate-800 placeholder-slate-400 outline-none transition-all hover:bg-blue-50 focus:border-[#00529C] focus:bg-white focus:ring-2 focus:ring-[#00529C]/15"
+        />
+
+        {evidenceImageValue && (
+          <div className="mt-3 overflow-hidden rounded-2xl border border-blue-200 bg-white p-2">
+            <img
+              src={evidenceImageValue}
+              alt="Ảnh minh chứng gửi kèm"
+              className="max-h-60 w-full rounded-xl object-contain"
+            />
+          </div>
+        )}
       </div>
 
       <div

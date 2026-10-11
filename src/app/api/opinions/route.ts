@@ -12,6 +12,7 @@ type OpinionRow = {
   topic_id: number | null;
   topic_other: string | null;
   content: string;
+  evidence_image: string | null;
   is_anonymous: boolean;
   status: string;
   created_at: string;
@@ -89,6 +90,7 @@ export async function GET(request: NextRequest) {
       topic_name: repairUtf8Text(opinion.topic_name),
       topic_other: repairUtf8Text(opinion.topic_other),
       content: repairUtf8Text(opinion.content) || "",
+      evidence_image: opinion.evidence_image || null,
     }));
 
     return NextResponse.json({

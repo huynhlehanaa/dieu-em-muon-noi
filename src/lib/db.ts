@@ -41,11 +41,14 @@ export async function initDB() {
       topic_id INTEGER REFERENCES topics(id),
       topic_other VARCHAR(200),
       content TEXT NOT NULL,
+      evidence_image TEXT,
       is_anonymous BOOLEAN DEFAULT false,
       status VARCHAR(20) DEFAULT 'pending',
       created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
     )
   `;
+
+  await db`ALTER TABLE opinions ADD COLUMN IF NOT EXISTS evidence_image TEXT`;
 
   const existingRows = (await db`SELECT id, name FROM topics`) as Array<{ id: number; name: string }>;
   for (const row of existingRows) {

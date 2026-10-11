@@ -5,6 +5,11 @@ import fs from "fs/promises";
 import path from "path";
 
 async function persistAdminPasswordHash(newHash: string) {
+  if (process.env.VERCEL || process.env.NODE_ENV === "production") {
+    process.env.ADMIN_PASSWORD_HASH = newHash;
+    return false;
+  }
+
   const envFilePath = path.resolve(process.cwd(), ".env.local");
   let envContent = "";
 
@@ -32,6 +37,7 @@ async function persistAdminPasswordHash(newHash: string) {
   const finalContent = `${nextLines.join("\n")}\n`;
   await fs.writeFile(envFilePath, finalContent, "utf8");
   process.env.ADMIN_PASSWORD_HASH = newHash;
+  return true;
 }
 
 export async function POST(request: NextRequest) {
@@ -77,13 +83,14 @@ export async function POST(request: NextRequest) {
       .update(newPassword + passwordSalt)
       .digest("hex");
 
-    await persistAdminPasswordHash(newHash);
+    const savedLocally = await persistAdminPasswordHash(newHash);
 
     return NextResponse.json({
-      message:
-        "✅ Mật khẩu đã được cập nhật thành công và hash mới đã được lưu vào máy chủ.",
+      message: savedLocally
+        ? "✅ Mật khẩu đã được cập nhật thành công và hash mới đã được lưu vào máy chủ."
+        : "✅ Hash mật khẩu mới đã được tạo. Trên Vercel, không thể ghi trực tiếp vào file .env.local vì hệ thống chỉ đọc được. Vui lòng cập nhật biến ADMIN_PASSWORD_HASH trong Vercel Dashboard → Settings → Environment Variables.",
       newHash,
-      updated: true,
+      updated: savedLocally,
     });
   } catch (error) {
     console.error("Change password error:", error);
