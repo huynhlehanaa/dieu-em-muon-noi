@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { TOPIC_OPTIONS } from "@/lib/topicOptions";
 
 const VILLAGES = ["Phương Đông", "Ba Hương", "Tak Nú", "Làng Gạch", "Tak Kót", "Tak Ngưi"];
@@ -22,6 +22,31 @@ export default function OpinionForm() {
   const [evidenceImage, setEvidenceImage] = useState("");
   const [evidenceImageName, setEvidenceImageName] = useState("");
   const [evidenceImageUrl, setEvidenceImageUrl] = useState("");
+  const [topicOptions, setTopicOptions] = useState<string[]>([...TOPIC_OPTIONS]);
+
+  useEffect(() => {
+    const loadTopics = async () => {
+      try {
+        const res = await fetch("/api/topics");
+        if (!res.ok) return;
+        const data = await res.json();
+
+        if (Array.isArray(data) && data.length > 0) {
+          const names = data
+            .map((item: { name?: string }) => item?.name)
+            .filter((name): name is string => Boolean(name && name.trim()));
+
+          if (names.length > 0) {
+            setTopicOptions([...new Set([...TOPIC_OPTIONS, ...names])]);
+          }
+        }
+      } catch {
+        // Keep the built-in fallback list when the API is unavailable.
+      }
+    };
+
+    loadTopics();
+  }, []);
 
   const evidenceImageValue = (evidenceImage || evidenceImageUrl.trim()).trim();
 
@@ -227,7 +252,7 @@ export default function OpinionForm() {
           className="w-full rounded-2xl border border-blue-200 bg-blue-50/70 px-4 py-3.5 text-base font-semibold text-slate-800 outline-none transition-all hover:bg-blue-50 focus:border-[#00529C] focus:bg-white focus:ring-2 focus:ring-[#00529C]/15"
         >
           <option value="">-- 💡 Chọn chủ đề --</option>
-          {TOPIC_OPTIONS.map((topic) => (
+          {topicOptions.map((topic) => (
             <option key={topic} value={topic}>
               {topic}
             </option>
