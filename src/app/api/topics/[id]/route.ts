@@ -64,7 +64,7 @@ export async function DELETE(
     await db`
       UPDATE opinions
       SET topic_id = NULL,
-          topic_name = 'Khác'
+          topic_other = 'Khác'
       WHERE topic_id = ${id}
     `;
 
