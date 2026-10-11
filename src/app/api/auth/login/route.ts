@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createToken } from "@/lib/auth";
+import { getAdminPasswordHash, initDB } from "@/lib/db";
 import crypto from "crypto";
 
 export async function POST(request: NextRequest) {
@@ -7,11 +8,24 @@ export async function POST(request: NextRequest) {
     const { username, password } = await request.json();
 
     const adminUsername = process.env.ADMIN_USERNAME;
-    const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH;
     const passwordSalt = process.env.PASSWORD_SALT || "default-salt";
 
-    if (!adminUsername || !adminPasswordHash) {
-      console.error("Admin credentials not configured in environment variables");
+    if (!adminUsername) {
+      console.error("ADMIN_USERNAME not configured");
+      return NextResponse.json(
+        { error: "Cấu hình server chưa hoàn chỉnh" },
+        { status: 500 }
+      );
+    }
+
+    // Đảm bảo bảng admin_settings tồn tại và hash được seed từ env nếu chưa có
+    await initDB();
+
+    // Đọc hash từ DB (fallback về env nếu DB chưa có)
+    const adminPasswordHash = await getAdminPasswordHash();
+
+    if (!adminPasswordHash) {
+      console.error("No password hash found in DB or env");
       return NextResponse.json(
         { error: "Cấu hình server chưa hoàn chỉnh" },
         { status: 500 }
@@ -23,7 +37,6 @@ export async function POST(request: NextRequest) {
       .update(password + passwordSalt)
       .digest("hex");
 
-    // Use constant-time comparison to prevent timing attacks
     const isUsernameMatch = username === adminUsername;
     const isPasswordMatch = inputHash === adminPasswordHash;
 
@@ -41,7 +54,7 @@ export async function POST(request: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 60 * 60 * 8, // 8 hours
+      maxAge: 60 * 60 * 8, // 8 tiếng
       path: "/",
     });
 

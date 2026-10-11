@@ -50,6 +50,24 @@ export async function initDB() {
 
   await db`ALTER TABLE opinions ADD COLUMN IF NOT EXISTS evidence_image TEXT`;
 
+  // Bảng lưu cài đặt admin (mật khẩu hash, v.v.)
+  await db`
+    CREATE TABLE IF NOT EXISTS admin_settings (
+      key   VARCHAR(100) PRIMARY KEY,
+      value TEXT NOT NULL
+    )
+  `;
+
+  // Seed hash từ env vào DB nếu DB chưa có
+  const envHash = process.env.ADMIN_PASSWORD_HASH;
+  if (envHash) {
+    await db`
+      INSERT INTO admin_settings (key, value)
+      VALUES ('password_hash', ${envHash})
+      ON CONFLICT (key) DO NOTHING
+    `;
+  }
+
   const existingRows = (await db`SELECT id, name FROM topics`) as Array<{ id: number; name: string }>;
   for (const row of existingRows) {
     const canonicalName = LEGACY_TOPIC_ALIASES[row.name] ?? row.name;
@@ -65,4 +83,26 @@ export async function initDB() {
       await db`INSERT INTO topics (name) VALUES (${topicName}) ON CONFLICT (name) DO NOTHING`;
     }
   }
+}
+
+/** Đọc hash mật khẩu admin: ưu tiên DB, fallback về env */
+export async function getAdminPasswordHash(): Promise<string | null> {
+  try {
+    const db = getSql();
+    const rows = (await db`SELECT value FROM admin_settings WHERE key = 'password_hash'`) as { value: string }[];
+    if (rows.length > 0) return rows[0].value;
+  } catch {
+    // DB chưa sẵn sàng → dùng env
+  }
+  return process.env.ADMIN_PASSWORD_HASH ?? null;
+}
+
+/** Lưu hash mật khẩu admin mới vào DB (có hiệu lực ngay trên mọi thiết bị) */
+export async function setAdminPasswordHash(newHash: string): Promise<void> {
+  const db = getSql();
+  await db`
+    INSERT INTO admin_settings (key, value)
+    VALUES ('password_hash', ${newHash})
+    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+  `;
 }

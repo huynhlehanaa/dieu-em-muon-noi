@@ -61,8 +61,6 @@ export default function AdminDashboard() {
   const [currentPwd, setCurrentPwd] = useState("");
   const [newPwd, setNewPwd] = useState("");
   const [pwdMsg, setPwdMsg] = useState("");
-  const [newHash, setNewHash] = useState("");
-  const [hashCopied, setHashCopied] = useState(false);
 
   const fetchOpinions = useCallback(async () => {
     setIsLoading(true);
@@ -200,8 +198,6 @@ export default function AdminDashboard() {
   const handleChangePassword = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setPwdMsg("");
-    setNewHash("");
-    setHashCopied(false);
     const res = await fetch("/api/auth/change-password", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -212,19 +208,12 @@ export default function AdminDashboard() {
     });
     const data = await res.json();
     if (res.ok) {
-      setNewHash(data.newHash);
       setPwdMsg(data.message);
       setCurrentPwd("");
       setNewPwd("");
     } else {
       setPwdMsg("❌ " + data.error);
     }
-  };
-
-  const copyHash = async () => {
-    await navigator.clipboard.writeText(newHash);
-    setHashCopied(true);
-    setTimeout(() => setHashCopied(false), 2000);
   };
 
   const handleExport = () => {
@@ -759,17 +748,9 @@ export default function AdminDashboard() {
                       Đổi mật khẩu quản trị
                     </h2>
                     <p className="text-xs font-bold text-slate-500">
-                      Tạo mã bảo mật mới cho tài khoản Cán bộ
+                      Mật khẩu mới có hiệu lực ngay, không cần cập nhật Vercel
                     </p>
                   </div>
-                </div>
-
-                <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-xs font-semibold leading-relaxed text-amber-800">
-                  ⚠️ Sau khi nhận được hash, hãy cập nhật biến{" "}
-                  <code className="rounded bg-amber-100 px-1.5 py-0.5 font-mono font-bold">
-                    ADMIN_PASSWORD_HASH
-                  </code>{" "}
-                  trong Vercel Dashboard → Settings → Environment Variables.
                 </div>
 
                 <form onSubmit={handleChangePassword} className="space-y-4" noValidate>
@@ -817,27 +798,14 @@ export default function AdminDashboard() {
                       type="submit"
                       className="w-full rounded-2xl border-b-4 border-[#003d75] bg-[#00529C] py-3.5 text-sm font-black uppercase tracking-wide text-white shadow-lg transition-all hover:brightness-110 active:translate-y-0.5 active:border-b-0"
                     >
-                      🔑 Tạo hash mật khẩu mới
+                      🔑 Đổi mật khẩu
                     </button>
                   </div>
                 </form>
 
                 {pwdMsg && (
                   <div className="mt-5 rounded-2xl border border-blue-200 bg-blue-50/60 p-4">
-                    <p className="mb-3 text-sm font-bold text-slate-700">{pwdMsg}</p>
-                    {newHash && (
-                      <div className="relative">
-                        <code className="block select-all break-all rounded-xl bg-slate-900 p-3.5 pr-20 font-mono text-xs text-emerald-400">
-                          {newHash}
-                        </code>
-                        <button
-                          onClick={copyHash}
-                          className="absolute right-2.5 top-2.5 rounded-lg bg-slate-700 px-2.5 py-1 text-xs font-bold text-white transition-all hover:bg-slate-600"
-                        >
-                          {hashCopied ? "✓ Đã copy" : "Copy"}
-                        </button>
-                      </div>
-                    )}
+                    <p className="text-sm font-bold text-slate-700">{pwdMsg}</p>
                   </div>
                 )}
               </div>
